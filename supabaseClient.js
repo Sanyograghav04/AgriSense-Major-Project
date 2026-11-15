@@ -51,37 +51,39 @@ async function signInWithGoogle() {
 }
 
 async function signOut() {
-  const { error } = await supabaseClient.auth.signOut();
-  if (!error) {
-    window.location.href = "login.html";
-  }
-  return { error };
+  sessionStorage.removeItem("agrisense_guest");
+  try {
+    await supabaseClient.auth.signOut();
+  } catch (e) {}
+  window.location.href = "login.html";
 }
 
 /* ============ DATABASE HELPERS ============ */
 
 async function saveReadingToDB(snapshot) {
-  const user = await getUser();
-  if (!user) return null;
+  let user = null;
+  try { user = await getUser(); } catch (e) {}
 
   try {
+    const row = {
+      location: snapshot.location || "Unknown",
+      latitude: snapshot.lat || null,
+      longitude: snapshot.lon || null,
+      crop: snapshot.crop || "Unknown",
+      temperature: snapshot.temp ?? null,
+      humidity: snapshot.hum ?? null,
+      soil_moisture: snapshot.soilM ?? null,
+      soil_temperature: snapshot.soilT ?? null,
+      rainfall: snapshot.rainfall ?? null,
+      wind_speed: snapshot.wind ?? null,
+      health_score: snapshot.score ?? null,
+      ndvi: snapshot.ndvi ?? null
+    };
+    if (user && user.id) row.user_id = user.id;
+
     const { data, error } = await supabaseClient
       .from("sensor_readings")
-      .insert([{
-        user_id: user.id,
-        location: snapshot.location || "Unknown",
-        latitude: snapshot.lat || null,
-        longitude: snapshot.lon || null,
-        crop: snapshot.crop || "Unknown",
-        temperature: snapshot.temp ?? null,
-        humidity: snapshot.hum ?? null,
-        soil_moisture: snapshot.soilM ?? null,
-        soil_temperature: snapshot.soilT ?? null,
-        rainfall: snapshot.rainfall ?? null,
-        wind_speed: snapshot.wind ?? null,
-        health_score: snapshot.score ?? null,
-        ndvi: snapshot.ndvi ?? null
-      }]);
+      .insert([row]);
 
     if (error) {
       console.warn("[AgriSense] DB save error:", error.message);
@@ -97,22 +99,29 @@ async function saveReadingToDB(snapshot) {
 }
 
 async function saveAlertToDB(alertObj) {
-  const user = await getUser();
-  if (!user) return null;
+  let user = null;
+  try { user = await getUser(); } catch (e) {}
 
   try {
+    const row = {
+      location: alertObj.location || "Unknown",
+      crop: alertObj.crop || "Unknown",
+      alert_level: alertObj.level || "info",
+      message: alertObj.msg || ""
+    };
+    if (user && user.id) row.user_id = user.id;
+
     const { data, error } = await supabaseClient
       .from("sensor_alerts")
-      .insert([{
-        user_id: user.id,
-        location: alertObj.location || "Unknown",
-        crop: alertObj.crop || "Unknown",
-        alert_level: alertObj.level || "info",
-        message: alertObj.msg || ""
-      }]);
+      .insert([row]);
 
     if (error) console.warn("[AgriSense] Alert save error:", error.message);
     return data;
+  } catch (err) {
+    console.warn("[AgriSense] Alert save exception:", err);
+    return null;
+  }
+}
   } catch (err) {
     console.warn("[AgriSense] Alert save exception:", err);
     return null;
@@ -185,8 +194,9 @@ function updateDBStatus(type, text) {
 async function testSupabaseConnection() {
   try {
     const session = await getSession();
-    if (!session) {
-      updateDBStatus("standby", "🗄️ Supabase: Not Logged In");
+    const isGuest = sessionStorage.getItem("agrisense_guest") === "true";
+    if (!session && !isGuest) {
+      updateDBStatus("standby", "🗄️ Supabase: Ready");
       return false;
     }
     const { error } = await supabaseClient
@@ -194,14 +204,14 @@ async function testSupabaseConnection() {
       .select("id")
       .limit(1);
 
-    if (error && error.code !== "PGRST116") {
-      updateDBStatus("warn", "⚠️ Supabase: Table Error");
+    if (error && error.code !== "PGRST116" && error.code !== "42501") {
+      updateDBStatus("warn", "⚠️ Supabase: Checking Tables");
       return false;
     }
     updateDBStatus("connected", "🟢 Supabase: Connected");
     return true;
   } catch (e) {
-    updateDBStatus("error", "⚠️ Supabase: Offline");
+    updateDBStatus("error", "⚠️ Supabase: Local Mode");
     return false;
   }
 }

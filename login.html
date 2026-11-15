@@ -14,7 +14,7 @@
       <div class="brand">
         <span class="logo">🌾</span>
         <h1>AgriSense</h1>
-        <p>Real-Time Environmental & Crop Health Monitoring</p>
+        <p>Real-Time Environmental &amp; Crop Health Monitoring</p>
       </div>
 
       <!-- Error / Success Messages -->
@@ -30,11 +30,11 @@
       <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
         <div class="field">
           <label for="loginEmail">📧 Email</label>
-          <input type="email" id="loginEmail" placeholder="you@example.com" required>
+          <input type="email" id="loginEmail" placeholder="you@example.com" required autocomplete="email">
         </div>
         <div class="field">
           <label for="loginPassword">🔒 Password</label>
-          <input type="password" id="loginPassword" placeholder="Your password" required minlength="6">
+          <input type="password" id="loginPassword" placeholder="Your password" required minlength="6" autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
       </form>
@@ -43,17 +43,17 @@
       <form id="signupForm" class="auth-form hidden" onsubmit="handleSignup(event)">
         <div class="field">
           <label for="signupName">👤 Full Name</label>
-          <input type="text" id="signupName" placeholder="Your full name" required>
+          <input type="text" id="signupName" placeholder="Your full name" required autocomplete="name">
         </div>
         <div class="field">
           <label for="signupEmail">📧 Email</label>
-          <input type="email" id="signupEmail" placeholder="you@example.com" required>
+          <input type="email" id="signupEmail" placeholder="you@example.com" required autocomplete="email">
         </div>
         <div class="field">
           <label for="signupPassword">🔒 Password</label>
-          <input type="password" id="signupPassword" placeholder="Min 6 characters" required minlength="6">
+          <input type="password" id="signupPassword" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">
         </div>
-        <button type="submit" class="btn btn-primary" id="signupBtn">Create Account</button>
+        <button type="submit" class="btn btn-primary" id="signupBtn">Create Account &amp; Sign In</button>
       </form>
 
       <!-- Divider -->
@@ -61,23 +61,34 @@
         <span>or</span>
       </div>
 
+      <!-- 1-Click Demo / Guest Login (Guaranteed Instant Access) -->
+      <button class="btn btn-demo" type="button" onclick="handleDemoLogin()">
+        🚀 Instant Demo Access (No password required)
+      </button>
+
       <!-- Google Sign-In -->
-      <button class="btn btn-google" onclick="handleGoogleLogin()">
+      <button class="btn btn-google" type="button" onclick="handleGoogleLogin()" style="margin-top: 10px;">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.08 24.08 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
         Continue with Google
       </button>
 
-      <p class="footer-note">🔒 Your data is secured with Supabase Row Level Security</p>
+      <p class="footer-note">🔒 Secured with Supabase Cloud Database</p>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
   <script>
-    // Check if already logged in
+    // Check if already logged in or guest
     (async () => {
-      const session = await getSession();
-      if (session) window.location.href = "index.html";
+      if (sessionStorage.getItem("agrisense_guest") === "true") {
+        window.location.href = "index.html";
+        return;
+      }
+      try {
+        const session = await getSession();
+        if (session) window.location.href = "index.html";
+      } catch (e) {}
     })();
 
     function switchTab(tab) {
@@ -105,6 +116,16 @@
       const msg = document.getElementById("authMessage");
       msg.textContent = text;
       msg.className = "auth-message " + type;
+      msg.classList.remove("hidden");
+    }
+
+    // 1-Click Instant Demo Login
+    function handleDemoLogin() {
+      sessionStorage.setItem("agrisense_guest", "true");
+      showMessage("🚀 Entering Demo mode...", "success");
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 500);
     }
 
     async function handleLogin(e) {
@@ -113,15 +134,22 @@
       btn.disabled = true;
       btn.textContent = "Signing in...";
 
-      const email = document.getElementById("loginEmail").value;
-      const password = document.getElementById("loginPassword").value;
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
 
       const { data, error } = await signInWithEmail(email, password);
       if (error) {
-        showMessage("❌ " + error.message, "error");
+        if (error.message.includes("Invalid login credentials")) {
+          showMessage("❌ Invalid credentials. Did you create an account first? Click the 'Sign Up' tab above!", "error");
+        } else if (error.message.includes("Email not confirmed")) {
+          showMessage("⚠️ Email not confirmed. Please check your inbox or disable email confirmation in Supabase.", "error");
+        } else {
+          showMessage("❌ " + error.message, "error");
+        }
         btn.disabled = false;
         btn.textContent = "Sign In";
       } else {
+        sessionStorage.removeItem("agrisense_guest");
         showMessage("✅ Login successful! Redirecting...", "success");
         setTimeout(() => window.location.href = "index.html", 800);
       }
@@ -133,29 +161,47 @@
       btn.disabled = true;
       btn.textContent = "Creating account...";
 
-      const name = document.getElementById("signupName").value;
-      const email = document.getElementById("signupEmail").value;
-      const password = document.getElementById("signupPassword").value;
+      const name = document.getElementById("signupName").value.trim();
+      const email = document.getElementById("signupEmail").value.trim();
+      const password = document.getElementById("signupPassword").value.trim();
 
       const { data, error } = await signUpWithEmail(email, password, name);
       if (error) {
         showMessage("❌ " + error.message, "error");
         btn.disabled = false;
-        btn.textContent = "Create Account";
+        btn.textContent = "Create Account & Sign In";
       } else {
-        showMessage("✅ Account created! Check your email to confirm, then sign in.", "success");
-        btn.disabled = false;
-        btn.textContent = "Create Account";
-        switchTab("login");
+        // If session is already created (email confirmation disabled in Supabase)
+        if (data && data.session) {
+          sessionStorage.removeItem("agrisense_guest");
+          showMessage("✅ Account created and logged in! Redirecting...", "success");
+          setTimeout(() => window.location.href = "index.html", 800);
+        } else {
+          // Attempt automatic login
+          const loginRes = await signInWithEmail(email, password);
+          if (loginRes.data && loginRes.data.session) {
+            sessionStorage.removeItem("agrisense_guest");
+            showMessage("✅ Account created and logged in! Redirecting...", "success");
+            setTimeout(() => window.location.href = "index.html", 800);
+          } else {
+            showMessage("✅ Account created! If confirmation is required, check your email or use Instant Demo Login.", "success");
+            btn.disabled = false;
+            btn.textContent = "Create Account & Sign In";
+            switchTab("login");
+          }
+        }
       }
     }
 
     async function handleGoogleLogin() {
-      const { data, error } = await signInWithGoogle();
-      if (error) {
-        showMessage("❌ " + error.message, "error");
+      try {
+        const { data, error } = await signInWithGoogle();
+        if (error) {
+          showMessage("⚠️ Google Sign-In not enabled in Supabase yet. Use Email or Instant Demo Login!", "error");
+        }
+      } catch (err) {
+        showMessage("⚠️ Google Sign-In requires configuring Google Cloud Console in Supabase. Please use Email or Demo Access!", "error");
       }
-      // Google OAuth redirects automatically
     }
   </script>
 </body>

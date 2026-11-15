@@ -143,6 +143,20 @@ body {
   transform: translateY(-1px);
 }
 
+.btn-demo {
+  background: #ecfdf5;
+  color: #15803d;
+  border: 2px dashed #16a34a;
+  width: 100%;
+  font-weight: 700;
+}
+.btn-demo:hover {
+  background: #dcfce7;
+  border-color: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22,163,74,.2);
+}
+
 /* Divider */
 .divider {
   display: flex;
