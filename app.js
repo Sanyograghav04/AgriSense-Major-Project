@@ -348,6 +348,25 @@ function render(data) {
 
   /* ---- log this snapshot ---- */
   logSnapshot({ t, hum: humidity, soilM: moisture, soilT, score, ndvi });
+
+  /* ---- sync to Supabase cloud ---- */
+  if (typeof saveReadingToDB === "function") {
+    const loc = PRESETS[state.sel.idx] || state.custom[state.sel.idx] || {};
+    saveReadingToDB({
+      location: loc.name || "Unknown",
+      lat: state.lat, lon: state.lon,
+      crop: crop.name, temp: t, hum: humidity,
+      soilM: moisture, soilT: soilT,
+      rainfall: rainNow, wind: wind,
+      score: score, ndvi: ndvi
+    });
+  }
+  if (typeof saveAlertToDB === "function") {
+    const loc = PRESETS[state.sel.idx] || state.custom[state.sel.idx] || {};
+    alerts.filter(([lvl]) => lvl !== "ok").forEach(([level, msg]) => {
+      saveAlertToDB({ location: loc.name || "Unknown", crop: crop.name, level, msg });
+    });
+  }
 }
 
 /* ---------------- 7-day forecast ---------------- */
