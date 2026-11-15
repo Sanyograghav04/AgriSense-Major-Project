@@ -122,11 +122,6 @@ async function saveAlertToDB(alertObj) {
     return null;
   }
 }
-  } catch (err) {
-    console.warn("[AgriSense] Alert save exception:", err);
-    return null;
-  }
-}
 
 async function fetchRecentReadings(limit = 50) {
   const user = await getUser();

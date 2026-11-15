@@ -161,35 +161,41 @@
       btn.disabled = true;
       btn.textContent = "Creating account...";
 
-      const name = document.getElementById("signupName").value.trim();
-      const email = document.getElementById("signupEmail").value.trim();
-      const password = document.getElementById("signupPassword").value.trim();
+      try {
+        const name = document.getElementById("signupName").value.trim();
+        const email = document.getElementById("signupEmail").value.trim();
+        const password = document.getElementById("signupPassword").value.trim();
 
-      const { data, error } = await signUpWithEmail(email, password, name);
-      if (error) {
-        showMessage("❌ " + error.message, "error");
-        btn.disabled = false;
-        btn.textContent = "Create Account & Sign In";
-      } else {
-        // If session is already created (email confirmation disabled in Supabase)
-        if (data && data.session) {
-          sessionStorage.removeItem("agrisense_guest");
-          showMessage("✅ Account created and logged in! Redirecting...", "success");
-          setTimeout(() => window.location.href = "index.html", 800);
+        const { data, error } = await signUpWithEmail(email, password, name);
+        if (error) {
+          showMessage("❌ " + error.message, "error");
+          btn.disabled = false;
+          btn.textContent = "Create Account & Sign In";
         } else {
-          // Attempt automatic login
-          const loginRes = await signInWithEmail(email, password);
-          if (loginRes.data && loginRes.data.session) {
+          // If session is already created (email confirmation disabled in Supabase)
+          if (data && data.session) {
             sessionStorage.removeItem("agrisense_guest");
             showMessage("✅ Account created and logged in! Redirecting...", "success");
             setTimeout(() => window.location.href = "index.html", 800);
           } else {
-            showMessage("✅ Account created! If confirmation is required, check your email or use Instant Demo Login.", "success");
-            btn.disabled = false;
-            btn.textContent = "Create Account & Sign In";
-            switchTab("login");
+            // Attempt automatic login
+            const loginRes = await signInWithEmail(email, password);
+            if (loginRes.data && loginRes.data.session) {
+              sessionStorage.removeItem("agrisense_guest");
+              showMessage("✅ Account created and logged in! Redirecting...", "success");
+              setTimeout(() => window.location.href = "index.html", 800);
+            } else {
+              showMessage("✅ Account created! If confirmation is required, check your email or click Demo Login below.", "success");
+              btn.disabled = false;
+              btn.textContent = "Create Account & Sign In";
+              switchTab("login");
+            }
           }
         }
+      } catch (err) {
+        showMessage("❌ " + (err.message || "An error occurred during signup"), "error");
+        btn.disabled = false;
+        btn.textContent = "Create Account & Sign In";
       }
     }
 
